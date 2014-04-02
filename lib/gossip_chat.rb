@@ -31,6 +31,33 @@ class GossipChat
     @server_sockets = []
   end
 
+  def broadcast_addresses
+    make_server_sockets if @server_sockets.empty?
+    addresses = [local_ipv4, local_ipv6].compact.join ','
+
+    @server_sockets.map do |socket|
+      socket.send addresses, 0
+    end
+  end
+
+  def listen_for_addresses
+    @listen_threads = make_client_sockets.map do |socket|
+      Thread.new do
+        loop do
+          addresses = socket.recv 1024
+          addresses = addresses.split(',').map do |address|
+            begin
+              IPAddr.new address
+            rescue IPAddr::Error
+            end
+          end
+
+          p got: addresses
+        end
+      end
+    end
+  end
+
   def local_ipv4
     addrinfo = Socket.ip_address_list.find do |addr|
       not addr.ipv6? and not addr.ipv4_loopback?
@@ -93,7 +120,7 @@ class GossipChat
   end
 
   def make_client_sockets
-    sockets = @address.map do |address|
+    sockets = @addresses.map do |address|
       make_client_socket(*address)
     end
 
@@ -126,7 +153,7 @@ class GossipChat
   end
 
   def make_server_sockets
-    sockets = @address.map do |address, _, interface|
+    sockets = @addresses.map do |address, _, interface|
       make_server_socket address, interface
     end
 
