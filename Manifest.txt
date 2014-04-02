@@ -4,4 +4,3 @@ Manifest.txt
 README.rdoc
 Rakefile
 lib/gossip_chat.rb
-test/test_gossip_chat.rb
