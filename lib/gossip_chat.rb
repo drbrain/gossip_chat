@@ -31,6 +31,27 @@ class GossipChat
     @server_sockets = []
   end
 
+  def local_ipv4
+    addrinfo = Socket.ip_address_list.find do |addr|
+      not addr.ipv6? and not addr.ipv4_loopback?
+    end
+
+    return unless addrinfo
+
+    addrinfo.ip_address
+  end
+
+  def local_ipv6
+    addrinfo = Socket.ip_address_list.find do |addr|
+      not addr.ipv4? and not addr.ipv6_loopback? and
+        not addr.ipv6_linklocal? and not addr.ipv6_unique_local?
+    end
+
+    return unless addrinfo
+
+    addrinfo.ip_address
+  end
+
   def make_client_socket address, interface_address = nil, interface = nil
     interface ||= INTERFACE
     addrinfo = Addrinfo.udp address, @port
