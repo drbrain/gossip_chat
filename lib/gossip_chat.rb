@@ -33,7 +33,7 @@ class GossipChat
 
   def broadcast_addresses
     make_server_sockets if @server_sockets.empty?
-    addresses = [local_ipv4, local_ipv6].compact
+    addresses = local_ipv4 + local_ipv6
 
     addresses.each do |address|
       type =
@@ -72,24 +72,16 @@ class GossipChat
   end
 
   def local_ipv4
-    addrinfo = Socket.ip_address_list.find do |addr|
+    Socket.ip_address_list.select do |addr|
       not addr.ipv6? and not addr.ipv4_loopback?
     end
-
-    return unless addrinfo
-
-    addrinfo
   end
 
   def local_ipv6
-    addrinfo = Socket.ip_address_list.find do |addr|
+    Socket.ip_address_list.select do |addr|
       not addr.ipv4? and not addr.ipv6_loopback? and
         not addr.ipv6_linklocal? and not addr.ipv6_unique_local?
     end
-
-    return unless addrinfo
-
-    addrinfo
   end
 
   def make_client_socket address, interface_address = nil, interface = nil
