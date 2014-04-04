@@ -33,10 +33,22 @@ class GossipChat
 
   def broadcast_addresses
     make_server_sockets if @server_sockets.empty?
-    addresses = [local_ipv4, local_ipv6].compact.join ','
+    addresses = [local_ipv4, local_ipv6].compact
 
-    @server_sockets.map do |socket|
-      socket.send addresses, 0
+    addresses.each do |address|
+      type =
+        case address.afamily
+        when Socket::AF_INET  then 4
+        when Socket::AF_INET6 then 6
+        end
+
+      address_n = IPAddr.new(address.ip_address).hton
+
+      message = [type, address_n].pack 'Ca*'
+
+      @server_sockets.map do |socket|
+        socket.send message, 0
+      end
     end
   end
 
@@ -44,15 +56,16 @@ class GossipChat
     @listen_threads = make_client_sockets.map do |socket|
       Thread.new do
         loop do
-          addresses = socket.recv 1024
-          addresses = addresses.split(',').map do |address|
+          message = socket.recv 17
+          _, data = message.unpack 'Ca*'
+
+          address =
             begin
-              IPAddr.new address
+              IPAddr.new_ntoh data
             rescue IPAddr::Error
             end
-          end
 
-          p got: addresses
+          p got: address
         end
       end
     end
@@ -65,7 +78,7 @@ class GossipChat
 
     return unless addrinfo
 
-    addrinfo.ip_address
+    addrinfo
   end
 
   def local_ipv6
@@ -76,7 +89,7 @@ class GossipChat
 
     return unless addrinfo
 
-    addrinfo.ip_address
+    addrinfo
   end
 
   def make_client_socket address, interface_address = nil, interface = nil
