@@ -42,11 +42,20 @@ class GossipChat
         when Socket::AF_INET6 then 6
         end
 
-      address_n = IPAddr.new(address.ip_address).hton
+      message_ip, message_scope = address.ip_address.split '%'
+      address_n = IPAddr.new(message_ip).hton
 
       message = [type, address_n].pack 'Ca*'
 
       @server_sockets.map do |socket|
+        family, _, socket_address, = socket.addr
+
+        next if family == 'AF_INET' and message_scope
+
+        if message_scope and socket_address =~ /%/ then
+          next unless $' == message_scope
+        end
+
         socket.send message, 0
       end
     end
@@ -80,7 +89,7 @@ class GossipChat
   def local_ipv6
     Socket.ip_address_list.select do |addr|
       not addr.ipv4? and not addr.ipv6_loopback? and
-        not addr.ipv6_linklocal? and not addr.ipv6_unique_local?
+        not addr.ipv6_unique_local?
     end
   end
 
@@ -121,7 +130,7 @@ class GossipChat
       socket.bind addrinfo
     end
 
-    socket
+    UDPSocket.for_fd socket.fileno
   end
 
   def make_client_sockets
@@ -154,7 +163,7 @@ class GossipChat
 
     socket.connect addrinfo
 
-    socket
+    UDPSocket.for_fd socket.fileno
   end
 
   def make_server_sockets
