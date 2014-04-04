@@ -4,25 +4,27 @@ require 'socket'
 class GossipChat
   VERSION = '1.0'
 
-  IPV4 = %w[239.71.79.83 0.0.0.0]
+  IPV4 = %w[239.71.79.83]
   PORT = 7380
 
-  def self.first_nonlocal_ifindex
+  def self.ipv6_nonlocal_interfaces
     Socket.getifaddrs.select do |addr|
-      addr.addr.pfamily == Socket::PF_LINK
-    end.find do |addr|
-      mac, = addr.addr.getnameinfo
-      !mac.empty?
-    end.ifindex
+      addrinfo = addr.addr
+
+      addrinfo.pfamily == Socket::PF_INET6 and not addrinfo.ipv6_unique_local?
+    end.map do |addr|
+      addr.ifindex
+    end.uniq
   end
 
-  INTERFACE = first_nonlocal_ifindex
-
-  IPV6 = ['ff02::e74f:5353', '::1', INTERFACE]
+  IPV6 =
+    ipv6_nonlocal_interfaces.map do |ifindex|
+      ['ff02::e74f:5353', '::1', ifindex]
+    end
 
   attr_accessor :multicast_hops
 
-  def initialize addresses: [IPV4, IPV6], port: PORT
+  def initialize addresses: [*IPV4, *IPV6], port: PORT
     @addresses = addresses
     @port      = port
 
@@ -94,7 +96,6 @@ class GossipChat
   end
 
   def make_client_socket address, interface_address = nil, interface = nil
-    interface ||= INTERFACE
     addrinfo = Addrinfo.udp address, @port
 
     socket = Socket.new addrinfo.pfamily, addrinfo.socktype,
@@ -126,8 +127,6 @@ class GossipChat
 
         socket.setsockopt :IPPROTO_IPV6, :IPV6_JOIN_GROUP, mreq
       end
-    else
-      socket.bind addrinfo
     end
 
     UDPSocket.for_fd socket.fileno
@@ -141,9 +140,7 @@ class GossipChat
     @client_sockets.concat sockets
   end
 
-  def make_server_socket address, interface # :nodoc:
-    interface ||= INTERFACE
-
+  def make_server_socket address, interface = nil # :nodoc:
     addrinfo = Addrinfo.udp address, @port
 
     socket = Socket.new addrinfo.pfamily, addrinfo.socktype, addrinfo.protocol
