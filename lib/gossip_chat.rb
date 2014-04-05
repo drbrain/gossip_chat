@@ -29,7 +29,7 @@ class GossipChat
     @port      = port
 
     @client_sockets = []
-    @multicast_hops = 0
+    @multicast_hops = 1
     @server_sockets = []
   end
 
