@@ -90,8 +90,7 @@ class GossipChat
 
   def local_ipv6
     Socket.ip_address_list.select do |addr|
-      not addr.ipv4? and not addr.ipv6_loopback? and
-        not addr.ipv6_unique_local?
+      not addr.ipv4? and not addr.ipv6_loopback?
     end
   end
 
