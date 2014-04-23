@@ -3,4 +3,5 @@ class GossipChat
 end
 
 require 'gossip_chat/announce'
+require 'gossip_chat/lru'
 

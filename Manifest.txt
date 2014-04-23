@@ -5,3 +5,4 @@ README.rdoc
 Rakefile
 lib/gossip_chat.rb
 lib/gossip_chat/announce.rb
+lib/gossip_chat/lru.rb
