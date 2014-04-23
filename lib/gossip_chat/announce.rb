@@ -21,12 +21,15 @@ class GossipChat::Announce
       ['ff02::e74f:5353', '::1', ifindex]
     end
 
+  attr_reader :address_queue
+
   attr_accessor :multicast_hops
 
   def initialize addresses: [*IPV4, *IPV6], port: PORT
     @addresses = addresses
     @port      = port
 
+    @address_queue  = Queue.new
     @client_sockets = []
     @multicast_hops = 1
     @server_sockets = []
@@ -69,13 +72,11 @@ class GossipChat::Announce
           message = socket.recv 17
           _, data = message.unpack 'Ca*'
 
-          address =
-            begin
-              IPAddr.new_ntoh data
-            rescue IPAddr::Error
-            end
-
-          p got: address
+          begin
+            @address_queue.enq IPAddr.new_ntoh data
+          rescue IPAddr::Error
+            next
+          end
         end
       end
     end
